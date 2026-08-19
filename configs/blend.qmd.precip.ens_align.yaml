@@ -1,0 +1,51 @@
+---
+# ----------------------------------------------------------------------------------------  
+# Ensemble Alignment Config for QMD PRECIP24
+# ---------------------------------------------------------------------------------------- 
+
+# ----------------------------------------------------------------------------------------  
+# adapted from ensalign namelists -- NOTE: x,y indices follow fortran convention
+# ----------------------------------------------------------------------------------------
+
+shift_const:
+    nshfpass: 2
+    noutsmth: 1
+    # Number smoothing passes to apply to background field
+    nbaksmth: 1
+    # Number of 9-pt smoothing passes to apply to the shift vector field
+    nshfsmth: 0
+    # Minimum data points in a zone to affect shift determination
+    minkdat: 3
+    # Minimum data points relative to zero offset in a zone be a valid shift determination
+    minkdratio: 0.8
+    # Weighting ratio relative to zone size
+    slnratio0h: 0.5
+    slnratio48h: 1.0
+    applyshft: 0
+
+shift_zone:
+    hrzlap: 0.5
+    iborder: [0, 0]
+    izsize: [200, 75]
+    jborder: [0, 0]
+    jzsize: [200, 75]
+    loopstep: [3, 2]
+    procspg: [2, 1] ##[4, 1]
+
+#  weighting for each variable (in addition to normalization to account
+#  for standard error of observation)
+shift_wg:
+    # weighting constant
+    wgtvar: 1.0
+    # if 1, it will do threshold checking
+    thresh_flag: 1
+    # threshold value
+    threshvar: 0.25
+
+lpm_const:
+    patch_nx: 10
+    patch_ny: 10
+    ovx: 30
+    ovy: 30
+    gauss_sigma: 0
+    filt_min: 0

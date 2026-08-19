@@ -1,0 +1,37 @@
+#!/bin/bash
+#SBATCH --job-name=ens_align
+#SBATCH --output=logs/ens_align_%j.log
+#SBATCH --time=00:15:00
+#SBATCH --ntasks=24
+#SBATCH --cpus-per-task=2
+#SBATCH --mem-per-cpu=3900mb
+#SBATCH --account=mdl-sti
+
+module purge
+module load intel-oneapi-compilers/2026.1.0
+module load intel-oneapi-mpi/2021.18.0
+module load netcdf-fortran/4.6.1
+module load netcdf-c/4.9.2
+module load cmake/3.30.2
+
+source activate /scratch4/STI/mdl-sti/Sidney.Lower/miniforge3/envs/ens_align
+
+export OMP_NUM_THREADS=1
+export MKL_NUM_THREADS=1
+export OPENBLAS_NUM_THREADS=1
+
+n_members=25
+echo "Running for $n_members members"
+
+outfile=ens_align_results.zarr
+
+echo outfile? ${outfile}
+
+if [ -d "$outfile" ]; then
+    echo "Deleting existing $outfile..."
+    rm -rf $outfile
+else
+    echo " "
+fi
+
+srun --cpu-bind=cores python -u test_ens_align.py $n_members ${outfile}
