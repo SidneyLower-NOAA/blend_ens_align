@@ -1,10 +1,10 @@
 import mpi4py
-import blend_ens_align
+from src.blend_ens_align import ensalign
 import xarray as xr
 import numpy as np
 import datetime
 import yaml
-import sys
+import sys, os
 
 from mpi4py import MPI
 
@@ -17,9 +17,8 @@ if rank == 0:
     print(f" BEGIN test_ens_align - {s.strftime('%Y-%m-%d %H:%M:%S')}")
     print("*"*40)
 
-select_models = sys.argv[1]
-select_models = select_models.split()
-out_zarr = sys.argv[2]
+select_models = os.environ.get("models").split()
+out_zarr = os.environ.get("outfile")
 
 """
 In operation, the QMD model forecast files will be less clean, so we will rely on 
@@ -66,7 +65,7 @@ def collect_augment_das(ds: xr.Dataset, model_names: []) -> list:
 
     return da_models
 
-ens_data = xr.open_dataset('test_data/blend.t00z.model_qmd_fcst.precip06.f006.co.2p5.nc')
+ens_data = xr.open_dataset('test_data/test_blend_qmd_qpf06.zarr')
 
 lat = ens_data.latitude.data
 lon = ens_data.longitude.data
@@ -90,11 +89,23 @@ ensfcst = np.zeros((nx, ny, sum(member_loc.values())))
 ind = 0
 for da in ens_das:
     nmem = da.nmembers.size
-    # set any NaNs to missing value
-    ensfcst[:,:,ind:ind+nmem] = np.nan_to_num(np.asfortranarray(da.data.transpose(2, 1, 0)), nan=-999.)
+    ensfcst[:,:,ind:ind+nmem] = np.asfortranarray(da.data.transpose(2, 1, 0))
     ind += nmem
 
-with open("configs/blend.qmd.precip24.ens_align.yaml", "r") as f:
+debug = np.where(np.isnan(ensfcst))
+if rank == 0:
+    print(f" BEFORE: {debug}")
+
+# replace missing model data with ensemble mean at that point
+ensm = np.nanmean(ensfcst, axis=2, keepdims=True)
+ensfcst = np.where(np.isnan(ensfcst), ensm, ensfcst)
+
+debug = np.where(np.isnan(ensfcst))
+if rank == 0:
+    print(f" AFTER: {debug}")
+
+
+with open("configs/blend.qmd.precip.ens_align.yaml", "r") as f:
     config = yaml.safe_load(f)
 
 
@@ -118,10 +129,9 @@ gauss_sigma,patch_nx,patch_ny,ovx,ovy,filt_min = (config['lpm_const']['gauss_sig
 
 if rank == 0:
     print(f"[PYTHON]: Sending to align_blend_ens.ensalign", flush=True)
-    print(f"           N members: {ind}", flush=True)
 
 
-shift_x, shift_y, ensfcst_shift,ensfcst_shift_pm, ensfcst_shift_lpm = blend_ens_align.ensalign(ensfcst,dy,dx,ifhr,
+shift_x, shift_y, ensfcst_shift,ensfcst_shift_pm, ensfcst_shift_lpm = ensalign(ensfcst,dy,dx,ifhr,
                                    nbaksmth,nshfsmth,applyshft,slnratio0h,slnratio48h,noutsmth,minkdat,minkdratio,
                                    hrzlap,iborder,izsize,jborder,jzsize,loopstep,procspg,
                                    wgtvar,thresh_flag,threshvar,

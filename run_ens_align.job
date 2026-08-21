@@ -21,10 +21,9 @@ export MKL_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
 
 
-models=('gefs_qmdfcst' 'hrrrco_qmdfcst' 'refs001_qmdfcst' 'refs002_qmdfcst' 'refs003_qmdfcst' 'refs004_qmdfcst' 'refs005_qmdfcst')
-echo "Running for ${my_list[*]}"
+export models="gefs_qmdfcst' 'hrrrco_qmdfcst refs001_qmdfcst refs002_qmdfcst refs003_qmdfcst refs004_qmdfcst refs005_qmdfcst"
 
-outfile=ens_align_results.zarr
+export outfile=ens_align_results.zarr
 if [ -d "$outfile" ]; then
     echo "Deleting existing $outfile..."
     rm -rf $outfile
@@ -32,4 +31,4 @@ else
     echo " "
 fi
 
-srun --cpu-bind=cores python -u test_ens_align.py $models ${outfile}
+srun --cpu-bind=cores python -u test_ens_align.py
