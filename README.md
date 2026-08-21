@@ -14,10 +14,12 @@ The `src/` directory contains the consolidated subroutines and modules `ensalign
 - mrgrnk: merge-sort ranking module
 - pmm_lpm: Global and localized probability matched mean routines
 - shift_ops: shift/alignment vector routines
+- ens_align_blend: primary subroutine adapted from `ensalign` main program
 
+Variables previously set by namelists are now included in yaml files in `configs/`
 
 ## Build
-To build the Fortran modules with `f2py`, follow the guide in `build_ens_align.sh` -- the exact compiler suite is specific to Ursa so use whatever stack you prefer. 
+To build the Fortran modules with `f2py`, follow the guide in `build_ens_align.sh` -- the exact compiler suite listed there is specific to Ursa so use whatever stack you prefer. 
 
 ## How to run
 `blend_ens_align.ensalign` requires the following inputs:
@@ -72,4 +74,4 @@ To submit to SLURM scheduler:
 sbatch run_ens_align.job
 ```
 
-Currently saves output in `zarr` format.
+`test_ens_align.py` reads in an NBM QPF06 NetCDF file and extracts only the requested quantile mapped model arrays ('X_qmdfcst'). Numpy C-ordered arrays are transposed to align with Fortran style conventions. MPI initialization should occur in the runtime python script. Once `blend_ens_align.ensalign` finishes, xarray is used to save the output in `zarr` format.

@@ -10,7 +10,7 @@ module load cmake/3.30.2
 conda activate ens_align
 
 # generate f2py signature file
-python -m numpy.f2py ens_align_blend.f90 -h only_ens_align.pyf -m align_blend_ens --overwrite-signature
+python -m numpy.f2py ens_align_blend.f90 -h only_ens_align.pyf -m blend_ens_align --overwrite-signature
 
 # compile with f2py
 FC=mpif90 CC=mpicc python -m numpy.f2py -c --dep mpi only_ens_align.pyf \

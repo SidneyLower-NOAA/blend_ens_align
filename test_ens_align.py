@@ -1,5 +1,5 @@
 import mpi4py
-import align_blend_ens
+import blend_ens_align
 import xarray as xr
 import numpy as np
 import datetime
@@ -17,9 +17,14 @@ if rank == 0:
     print(f" BEGIN test_ens_align - {s.strftime('%Y-%m-%d %H:%M:%S')}")
     print("*"*40)
 
-num_members = int(sys.argv[1])
+select_models = sys.argv[1]
+select_models = select_models.split()
 out_zarr = sys.argv[2]
 
+"""
+In operation, the QMD model forecast files will be less clean, so we will rely on 
+this function from precip prodgen to grab only the QMD forecasts
+"""
 def collect_augment_das(ds: xr.Dataset, model_names: []) -> list:
 
     # Use center grid point to check if member is available.
@@ -61,23 +66,19 @@ def collect_augment_das(ds: xr.Dataset, model_names: []) -> list:
 
     return da_models
 
-ens_data = xr.open_dataset('/scratch4/STI/mdl-sti/Sidney.Lower/data/blend/dmo_tests/dmo_downscale_out/20260613_00/blend.t00z.model_qmd_fcst.precip06.f006.co.2p5.nc')
+ens_data = xr.open_dataset('test_data/blend.t00z.model_qmd_fcst.precip06.f006.co.2p5.nc')
 
 lat = ens_data.latitude.data
 lon = ens_data.longitude.data
 ny, nx = np.shape(lat) # --> remember that Fortran index = Python+1 AND x,y indices flipped
 ifhr = ens_data.lead_time.values[0]
 dx, dy = 2500., 2500.
-
-
-mods = ['gefs_qmdfcst','hrrrco_qmdfcst', 'refs001_qmdfcst', 'refs002_qmdfcst',
-                                         'refs003_qmdfcst', 'refs004_qmdfcst', 'refs005_qmdfcst']
     
 if rank == 0:
     print(f"[PYTHON]: Loading data...", flush=True)
-    print(f"           Using models: {mods}")
+    print(f"           Using models: {select_models}", flush=True)
 
-ens_das = collect_augment_das(ens_data, mods)
+ens_das = collect_augment_das(ens_data, select_models)
 
 member_loc = dict()
 for k in ens_das:
@@ -89,7 +90,8 @@ ensfcst = np.zeros((nx, ny, sum(member_loc.values())))
 ind = 0
 for da in ens_das:
     nmem = da.nmembers.size
-    ensfcst[:,:,ind:ind+nmem] = np.asfortranarray(da.data.transpose(2, 1, 0))
+    # set any NaNs to missing value
+    ensfcst[:,:,ind:ind+nmem] = np.nan_to_num(np.asfortranarray(da.data.transpose(2, 1, 0)), nan=-999.)
     ind += nmem
 
 with open("configs/blend.qmd.precip24.ens_align.yaml", "r") as f:
@@ -114,60 +116,18 @@ gauss_sigma,patch_nx,patch_ny,ovx,ovy,filt_min = (config['lpm_const']['gauss_sig
                                                   config['lpm_const']['patch_ny'], config['lpm_const']['ovx'],
                                                   config['lpm_const']['ovy'], config['lpm_const']['filt_min'])
 
-"""
-Args ordering
-
-ensfcst : input rank-3 array('f') with bounds (py_nx,py_ny,nmembers)
-py_dy : input int
-py_dx : input int
-ifhr : input int
-py_nbaksmth : input int
-py_nshfsmth : input int
-py_applyshft : input int
-py_slnratio0h : input float
-py_slnratio48h : input float
-py_noutsmth : input int
-py_minkdat : input float
-py_minkdratio : input float
-py_hrzlap : input float
-py_iborder : input rank-1 array('i') with bounds (py_nshfpass)
-py_izsize : input rank-1 array('i') with bounds (py_nshfpass)
-py_jborder : input rank-1 array('i') with bounds (py_nshfpass)
-py_jzsize : input rank-1 array('i') with bounds (py_nshfpass)
-py_loopstep : input rank-1 array('i') with bounds (py_nshfpass)
-py_procspg : input rank-1 array('i') with bounds (py_nshfpass)
-py_wgtvar : input float
-py_thresh_flag : input int
-py_threshvar : input float
-py_patch_nx : input int
-py_patch_ny : input int
-py_ovx : input int
-py_ovy : input int
-py_gauss_sigma : input int
-py_filt_min : input int
-
-Returns
--------
-xshiftmn : rank-4 array('f') with bounds (py_nx,py_ny,nmembers,py_nshfpass)
-yshiftmn : rank-4 array('f') with bounds (py_nx,py_ny,nmembers,py_nshfpass)
-ensfcst_shf : rank-4 array('f') with bounds (py_nx,py_ny,nmembers,py_nshfpass)
-ensshfpm : rank-3 array('f') with bounds (py_nx,py_ny,py_nshfpass)
-ensshflpm : rank-3 array('f') with bounds (py_nx,py_ny,py_nshfpass)
-"""
-
 if rank == 0:
     print(f"[PYTHON]: Sending to align_blend_ens.ensalign", flush=True)
+    print(f"           N members: {ind}", flush=True)
 
 
-shift_x, shift_y, ensfcst_shift,ensfcst_shift_pm, ensfcst_shift_lpm = align_blend_ens.ensalign(ensfcst[:,:,:num_members],dy,dx,ifhr,
+shift_x, shift_y, ensfcst_shift,ensfcst_shift_pm, ensfcst_shift_lpm = blend_ens_align.ensalign(ensfcst,dy,dx,ifhr,
                                    nbaksmth,nshfsmth,applyshft,slnratio0h,slnratio48h,noutsmth,minkdat,minkdratio,
                                    hrzlap,iborder,izsize,jborder,jzsize,loopstep,procspg,
                                    wgtvar,thresh_flag,threshvar,
                                    patch_nx,patch_ny,ovx,ovy,gauss_sigma,filt_min)
 
 if rank == 0:
-    #print(f"[PYTHON]: Received {test_10[0][:,:,0,0]}\n", flush=True)
-
 
     results = xr.Dataset(
                 data_vars=dict(
