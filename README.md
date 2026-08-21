@@ -66,7 +66,10 @@ ensshflpm : rank-3 array('f') with bounds (py_nx,py_ny,py_nshfpass)
 To run as an interactive job on Ursa with a sub-set of the full NBM suite:
 
 ```
-mpirun -np $NPROCS python test_ens_align.py $n_members ${outfile}
+export models="gefs_qmdfcst hrrrco_qmdfcst refs001_qmdfcst refs002_qmdfcst refs003_qmdfcst refs004_qmdfcst refs005_qmdfcst"
+export outfile=ens_align_results.zarr
+
+mpirun -np $NPROCS python test_ens_align.py 
 ```
 
 To submit to SLURM scheduler:

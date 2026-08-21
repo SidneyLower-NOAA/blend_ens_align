@@ -21,7 +21,7 @@ export MKL_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
 
 
-export models="gefs_qmdfcst' 'hrrrco_qmdfcst refs001_qmdfcst refs002_qmdfcst refs003_qmdfcst refs004_qmdfcst refs005_qmdfcst"
+export models="gefs_qmdfcst hrrrco_qmdfcst refs001_qmdfcst refs002_qmdfcst refs003_qmdfcst refs004_qmdfcst refs005_qmdfcst"
 
 export outfile=ens_align_results.zarr
 if [ -d "$outfile" ]; then
